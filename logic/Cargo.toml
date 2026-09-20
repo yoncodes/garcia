@@ -1,0 +1,12 @@
+[package]
+name = "logic"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+common.workspace = true
+configs.workspace = true
+database.workspace = true
+fastrand.workspace = true
+protocol.workspace = true
+thiserror.workspace = true

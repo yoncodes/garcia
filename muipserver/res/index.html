@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Garcia MUIP</title>
+  <style>
+    body { margin: 0; font: 15px Segoe UI, sans-serif; background: #111318; color: #ece7de; }
+    main { max-width: 880px; margin: 40px auto; padding: 0 20px; }
+    input, select, button { min-width: 0; box-sizing: border-box; font: inherit; border: 1px solid #393d46; background: #1c2028; color: #ece7de; padding: 10px 12px; }
+    button { cursor: pointer; background: #394150; }
+    button:disabled { cursor: default; opacity: .5; }
+    [hidden] { display: none !important; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .top h1 { margin: 0; }
+    .online { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #393d46; background: #181b22; padding: 8px 10px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #c84747; box-shadow: 0 0 12px #c84747; }
+    .online.is-online .dot { background: #4fb86a; box-shadow: 0 0 12px #4fb86a; }
+    .grid { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .grant-actions { margin-top: 14px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .actions { margin-top: 14px; display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .command { margin-top: 10px; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) auto; }
+    .status { margin: 14px 0; display: flex; gap: 12px; flex-wrap: wrap; color: #aeb6c4; }
+    .status span { border: 1px solid #393d46; background: #181b22; padding: 6px 10px; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #1c2028; border: 1px solid #393d46; padding: 16px; min-height: 100px; }
+    dialog { width: min(560px, calc(100% - 32px)); padding: 0; color: #ece7de; background: #181b22; border: 1px solid #4a505c; box-shadow: 0 20px 70px #000b; }
+    dialog::backdrop { background: #080a0dcc; backdrop-filter: blur(2px); }
+    .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #393d46; }
+    .dialog-head h2 { margin: 0; font-size: 20px; }
+    .dialog-head button { padding: 5px 10px; }
+    .dialog-body { display: grid; gap: 12px; padding: 18px; }
+    .dialog-body label { display: grid; gap: 6px; color: #aeb6c4; }
+    .dialog-body select { width: 100%; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 0 18px 18px; }
+    .dialog-note { margin: 0; color: #aeb6c4; }
+    .banner-list { display: grid; gap: 10px; max-height: 55vh; overflow: auto; }
+    .banner-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; border: 1px solid #393d46; background: #1c2028; padding: 12px; }
+    .banner-row strong, .banner-row small { display: block; }
+    .banner-row small { margin-top: 4px; color: #aeb6c4; }
+    @media (max-width: 640px) { .top { align-items: flex-start; flex-direction: column; } .grid, .grant-actions, .actions, .command { display: block; } input, select, button { width: 100%; margin-bottom: 10px; } .dialog-head button { width: auto; margin: 0; } .dialog-actions { display: block; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top">
+      <h1>Garcia MUIP</h1>
+      <div id="onlineState" class="online"><span class="dot"></span><span id="onlineText">Offline</span></div>
+    </div>
+    <div class="grid">
+      <input id="token" placeholder="admin token">
+      <select id="player"><option value="">No players online</option></select>
+    </div>
+    <div class="grant-actions">
+      <button type="button" data-grant-kind="heroes">Grant hero</button>
+      <button type="button" data-grant-kind="pets">Grant pet</button>
+      <button type="button" data-grant-kind="relics">Generate relic</button>
+      <button type="button" data-grant-kind="items">Grant item / currency</button>
+      <button type="button" id="manageBanners">Manage gacha banners</button>
+      <button type="button" id="manageBossRush">Manage Boss Rush</button>
+      <button type="button" id="openTeleport">Teleport</button>
+      <button type="button" data-command="teleport unlock all">Unlock teleport gates</button>
+    </div>
+    <div class="grant-actions">
+      <button type="button" data-progress-kind="player_levels">Increase player level</button>
+      <button type="button" data-progress-kind="world_levels">Increase world level</button>
+      <button type="button" data-progress-kind="story_stages">Complete story stage</button>
+    </div>
+    <div class="actions">
+      <button data-command="tutorial complete all">Complete tutorials</button>
+      <button data-command="tutorial reset all">Reset tutorials</button>
+      <button data-command="feature unlock all">Unlock features</button>
+      <button data-command="hero grant all">Grant all missing heroes</button>
+      <button data-command="pet grant all">Grant all missing pets</button>
+      <button data-command="profile frame unlock all">Unlock all avatar frames</button>
+      <button data-command="profile title unlock all">Unlock all titles</button>
+    </div>
+    <div class="command"><input id="command" placeholder="hero grant 110100001"><button id="run">Run</button></div>
+    <div class="status"><span id="server">server: checking</span><span id="players">players: checking</span><span id="ownership">collection: select a player</span></div>
+    <pre id="output">Commands run against the selected live KCP session and save immediately.</pre>
+    <dialog id="grantDialog">
+      <div class="dialog-head">
+        <h2 id="grantTitle">Grant</h2>
+        <button id="closeGrant" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="dialog-body">
+        <label id="grantSearchRow">Search<input id="grantSearch" type="search" placeholder="Name or ID"></label>
+        <label><span id="grantEntryLabel">Selection</span><select id="grantEntry"></select></label>
+        <label id="grantAmountRow">Amount<input id="grantAmount" type="number" min="1" value="1"></label>
+        <label id="customRelicRow" hidden><span><input id="customRelic" type="checkbox"> Choose relic stats</span></label>
+        <div id="relicBuild" hidden>
+          <label>Main stat<select id="relicMainStat"></select></label>
+          <div id="relicSubstats"></div>
+        </div>
+        <p id="grantNote" class="dialog-note"></p>
+      </div>
+      <div class="dialog-actions">
+        <button id="cancelGrant" type="button">Cancel</button>
+        <button id="maxGrant" type="button" hidden>Max selected</button>
+        <button id="confirmGrant" type="button">Grant</button>
+      </div>
+    </dialog>
+    <dialog id="progressDialog">
+      <div class="dialog-head">
+        <h2 id="progressTitle">Progression</h2>
+        <button id="closeProgress" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="dialog-body">
+        <label><span id="progressEntryLabel">Target</span><select id="progressEntry"></select></label>
+        <p id="progressNote" class="dialog-note"></p>
+      </div>
+      <div class="dialog-actions">
+        <button id="cancelProgress" type="button">Cancel</button>
+        <button id="confirmProgress" type="button">Apply</button>
+      </div>
+    </dialog>
+    <dialog id="bannerDialog">
+      <div class="dialog-head">
+        <h2>Gacha banners</h2>
+        <button id="closeBanners" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="dialog-body">
+        <p class="dialog-note">Scheduled banners stay unchanged. Enabling an expired or upcoming banner adds a persistent 30-day override that can be removed here at any time.</p>
+        <div id="bannerList" class="banner-list">Loading…</div>
+      </div>
+      <div class="dialog-actions">
+        <button id="doneBanners" type="button">Done</button>
+      </div>
+    </dialog>
+    <dialog id="bossRushDialog">
+      <div class="dialog-head">
+        <h2>Boss Rush seasons</h2>
+        <button id="closeBossRush" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="dialog-body">
+        <p class="dialog-note">Only one override can be active. Enabling an expired season reopens it for 30 days and replaces the previous override.</p>
+        <div id="bossRushList" class="banner-list">Loading…</div>
+      </div>
+      <div class="dialog-actions">
+        <button id="doneBossRush" type="button">Done</button>
+      </div>
+    </dialog>
+    <dialog id="teleportDialog">
+      <div class="dialog-head">
+        <h2>Teleport</h2>
+        <button id="closeTeleport" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="dialog-body">
+        <p id="currentLocation" class="dialog-note">Current location: loading…</p>
+        <p id="missionLocations" class="dialog-note">Active missions: loading…</p>
+        <label>Destination<select id="teleportLocation"></select></label>
+      </div>
+      <div class="dialog-actions">
+        <button id="cancelTeleport" type="button">Cancel</button>
+        <button id="confirmTeleport" type="button">Teleport</button>
+      </div>
+    </dialog>
+  </main>
+  <script>
+    const embeddedToken = __MUIP_TOKEN__;
+    const token = document.getElementById('token');
+    const player = document.getElementById('player');
+    const output = document.getElementById('output');
+    const catalog = { heroes: [], pets: [], relics: [], items: [], progression: { player_levels: [], world_levels: [], story_stages: [] } };
+    let grantKind = 'heroes';
+    let progressKind = 'player_levels';
+    let banners = [];
+    let bossRushSeasons = [];
+    let statusTimer;
+    token.value = localStorage.getItem('garciaMuipToken') || embeddedToken;
+
+    function authParams(extra = {}) {
+      localStorage.setItem('garciaMuipToken', token.value);
+      return new URLSearchParams({ token: token.value, ...extra });
+    }
+
+    function escapeHtml(value) {
+      return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+    }
+
+    async function refreshStatus() {
+      clearTimeout(statusTimer);
+      try {
+        const response = await fetch('/api/status?' + authParams(), { cache: 'no-store' });
+        const status = await response.json();
+        if (!response.ok) throw new Error(status.message || `status failed: ${response.status}`);
+        const ids = status.players || [];
+        const previous = player.value;
+        player.innerHTML = ids.length
+          ? ids.map(id => `<option value="${id}">${id}</option>`).join('')
+          : '<option value="">No players online</option>';
+        if (ids.some(id => String(id) === previous)) player.value = previous;
+        const online = ids.length > 0;
+        document.getElementById('onlineState').classList.toggle('is-online', online);
+        document.getElementById('onlineText').textContent = online ? 'Online' : 'Offline';
+        document.getElementById('server').textContent = `server: ${status.message || 'online'} (${ids.length} online)`;
+        document.getElementById('players').textContent = ids.length ? `players: ${ids.join(', ')}` : 'players: none';
+        if (player.value) await loadCollection(); else clearCollection();
+        statusTimer = setTimeout(refreshStatus, online ? 15000 : 3000);
+      } catch (error) {
+        document.getElementById('onlineState').classList.remove('is-online');
+        document.getElementById('onlineText').textContent = 'Offline';
+        document.getElementById('server').textContent = 'server: offline';
+        output.textContent = error.message;
+        statusTimer = setTimeout(refreshStatus, 3000);
+      }
+    }
+
+    function clearCollection() {
+      catalog.heroes = [];
+      catalog.pets = [];
+      catalog.relics = [];
+      catalog.items = [];
+      catalog.progression = { player_levels: [], world_levels: [], story_stages: [] };
+      document.getElementById('ownership').textContent = 'collection: select a player';
+    }
+
+    async function loadCollection() {
+      if (!player.value) return clearCollection();
+      try {
+        const response = await fetch('/api/collection?' + authParams({ player_uid: player.value }), { cache: 'no-store' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || `collection failed: ${response.status}`);
+        catalog.heroes = result.data?.heroes || [];
+        catalog.pets = result.data?.pets || [];
+        catalog.relics = result.data?.relics || [];
+        catalog.items = result.data?.items || [];
+        catalog.progression = result.data?.progression || { player_levels: [], world_levels: [], story_stages: [] };
+        updateCollectionStatus();
+        if (document.getElementById('grantDialog').open) renderGrantOptions();
+        if (document.getElementById('progressDialog').open) renderProgressOptions();
+      } catch (error) {
+        clearCollection();
+        output.textContent = `Unable to load collection: ${error.message}`;
+      }
+    }
+
+    function updateCollectionStatus() {
+      const heroes = catalog.heroes.filter(item => item.owned).length;
+      const pets = catalog.pets.filter(item => item.owned).length;
+      const relics = catalog.relics.reduce((total, relic) => total + relic.amount, 0);
+      document.getElementById('ownership').textContent = `collection: ${heroes}/${catalog.heroes.length} heroes · ${pets}/${catalog.pets.length} pets · ${relics} relics`;
+    }
+
+    function renderGrantOptions() {
+      const source = catalog[grantKind];
+      const query = document.getElementById('grantSearch').value.trim().toLowerCase();
+      const all = query
+        ? source.filter(item => String(item.id).includes(query) || item.name.toLowerCase().includes(query))
+        : source;
+      const entry = document.getElementById('grantEntry');
+      const previous = entry.value;
+      entry.innerHTML = all.length
+        ? all.map(item => grantKind === 'items' || grantKind === 'relics'
+          ? `<option value="${item.id}">${item.id} - ${escapeHtml(item.name)} (owned: ${item.amount})</option>`
+          : `<option value="${item.id}" data-owned="${item.owned}">${item.id} - ${escapeHtml(item.name)}${item.owned ? ' (owned)' : ''}</option>`
+        ).join('')
+        : '<option value="">No entries available</option>';
+      if (all.some(item => String(item.id) === previous)) entry.value = previous;
+      document.getElementById('confirmGrant').disabled = !entry.value;
+      const canMax = (grantKind === 'heroes' || grantKind === 'pets') && entry.value;
+      const maxButton = document.getElementById('maxGrant');
+      maxButton.hidden = !canMax;
+      maxButton.disabled = !canMax || entry.selectedOptions[0]?.dataset.owned !== 'true';
+      document.getElementById('grantNote').textContent = grantKind === 'items' || grantKind === 'relics'
+        ? `${all.length} of ${source.length} table-defined ${grantKind} shown.`
+        : `${all.filter(item => item.owned).length} of ${all.length} ${grantKind} owned.`;
+      renderRelicBuild();
+    }
+
+    function renderRelicBuild() {
+      const custom = grantKind === 'relics' && document.getElementById('customRelic').checked;
+      document.getElementById('relicBuild').hidden = !custom;
+      if (!custom) return;
+      const relic = catalog.relics.find(item => String(item.id) === document.getElementById('grantEntry').value);
+      if (!relic) return;
+      const build = document.getElementById('relicBuild');
+      if (build.dataset.relicId === String(relic.id)) return;
+      const option = stat => `<option value="${stat.id}" data-effect="${stat.effect_id}" data-limit="${stat.limit}">${escapeHtml(stat.name)} · ${stat.value} (word ${stat.id})</option>`;
+      document.getElementById('relicMainStat').innerHTML = relic.main_stats.map(option).join('');
+      document.getElementById('relicSubstats').innerHTML = Array.from({ length: relic.substat_count }, (_, index) =>
+        `<label>Substat ${index + 1}<select class="relic-substat">${relic.substats.map(option).join('')}</select></label>`
+      ).join('');
+      document.querySelectorAll('.relic-substat').forEach((select, index) => {
+        select.selectedIndex = index % select.options.length;
+      });
+      build.dataset.relicId = String(relic.id);
+    }
+
+    async function openGrantDialog(kind) {
+      if (!player.value) { output.textContent = 'No player is online'; return; }
+      grantKind = kind;
+      await loadCollection();
+      const singular = kind === 'heroes' ? 'hero' : kind === 'pets' ? 'pet' : kind === 'relics' ? 'relic' : 'item / currency';
+      document.getElementById('grantTitle').textContent = `Grant ${singular}`;
+      document.getElementById('grantEntryLabel').textContent = kind === 'items' ? 'Item or currency' : singular[0].toUpperCase() + singular.slice(1);
+      document.getElementById('grantSearch').value = '';
+      document.getElementById('grantAmountRow').hidden = kind === 'heroes';
+      document.getElementById('customRelicRow').hidden = kind !== 'relics';
+      document.getElementById('customRelic').checked = false;
+      renderGrantOptions();
+      document.getElementById('grantDialog').showModal();
+      document.getElementById('grantEntry').focus();
+    }
+
+    async function run(command) {
+      if (!player.value) { output.textContent = 'No player is online'; return false; }
+      output.textContent = 'Running…';
+      try {
+        const response = await fetch('/api/run_gm_cmd', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ token: token.value, player_uid: Number(player.value), command })
+        });
+        const result = await response.json();
+        output.textContent = result.message + (result.reconnect_required ? '\nReconnect the game to refresh this data.' : '');
+        if (!response.ok) throw new Error(result.message);
+        await loadCollection();
+        return true;
+      } catch (error) {
+        output.textContent = error.message;
+        return false;
+      }
+    }
+
+    async function grantSelected() {
+      const id = document.getElementById('grantEntry').value;
+      const amount = Number(document.getElementById('grantAmount').value);
+      let command;
+      if (grantKind === 'heroes') command = `hero grant ${id}`;
+      else if (grantKind === 'pets') command = `pet grant ${id} ${amount}`;
+      else if (grantKind === 'relics' && document.getElementById('customRelic').checked) {
+        const mainStat = document.getElementById('relicMainStat').value;
+        const selected = [...document.querySelectorAll('.relic-substat')];
+        const substats = selected.map(select => select.value);
+        const effects = selected.map(select => select.selectedOptions[0].dataset.effect);
+        const counts = effects.reduce((result, effect) => result.set(effect, (result.get(effect) || 0) + 1), new Map());
+        const invalid = selected.find(select => counts.get(select.selectedOptions[0].dataset.effect) > Number(select.selectedOptions[0].dataset.limit));
+        if (invalid) {
+          output.textContent = `${invalid.selectedOptions[0].textContent} exceeds the game table's duplicate limit.`;
+          return;
+        }
+        command = `relic grant ${id} ${amount} ${mainStat} ${substats.join(' ')}`;
+      } else command = `item grant ${id} ${amount}`;
+      if (id && (grantKind === 'heroes' || amount > 0) && await run(command)) {
+        document.getElementById('grantDialog').close();
+      }
+    }
+
+    async function maxSelected() {
+      const id = document.getElementById('grantEntry').value;
+      if (!id) return;
+      const command = grantKind === 'heroes' ? `hero max ${id}` : `familiar max ${id}`;
+      if (await run(command)) document.getElementById('grantDialog').close();
+    }
+
+    function renderProgressOptions() {
+      const progress = catalog.progression;
+      const entry = document.getElementById('progressEntry');
+      const current = progressKind === 'player_levels' ? progress.player_level : progress.world_level;
+      const rows = progress[progressKind] || [];
+      entry.innerHTML = rows.length
+        ? rows.map(row => progressKind === 'story_stages'
+          ? `<option value="${row.gameplay_id}">Group ${row.task_group} · stage ${row.sort} · ${row.gameplay_id}${row.completed ? ' (completed)' : ''}</option>`
+          : `<option value="${row}"${row < current ? ' disabled' : ''}>Level ${row}${row === current ? ' (current · refresh)' : ''}</option>`
+        ).join('')
+        : '<option value="">No entries available</option>';
+      document.getElementById('confirmProgress').disabled = !entry.value;
+      document.getElementById('progressNote').textContent = progressKind === 'story_stages'
+        ? 'Completes the selected stage and its table-defined main-task prerequisites.'
+        : `Current ${progressKind === 'player_levels' ? 'player' : 'world'} level: ${current}.`;
+    }
+
+    async function openProgressDialog(kind) {
+      if (!player.value) { output.textContent = 'No player is online'; return; }
+      progressKind = kind;
+      await loadCollection();
+      const title = kind === 'player_levels' ? 'Increase player level' : kind === 'world_levels' ? 'Increase world level' : 'Complete story stage';
+      document.getElementById('progressTitle').textContent = title;
+      document.getElementById('progressEntryLabel').textContent = kind === 'story_stages' ? 'Story stage' : 'Target level';
+      renderProgressOptions();
+      document.getElementById('progressDialog').showModal();
+    }
+
+    async function applyProgress() {
+      const value = document.getElementById('progressEntry').value;
+      const command = progressKind === 'player_levels'
+        ? `player level ${value}`
+        : progressKind === 'world_levels'
+          ? `world level ${value}`
+          : `stage complete ${value}`;
+      if (value && await run(command)) document.getElementById('progressDialog').close();
+    }
+
+    function formatRemaining(seconds) {
+      if (!seconds) return '';
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      return days ? `${days}d ${hours}h remaining` : `${hours}h remaining`;
+    }
+
+    function renderBanners() {
+      const list = document.getElementById('bannerList');
+      list.innerHTML = banners.length ? banners.map(banner => {
+        const labels = {
+          permanent: 'Permanent', active: 'Active', enabled: 'Enabled by MUIP',
+          upcoming: 'Upcoming', expired: 'Expired', invalid_schedule: 'Invalid schedule'
+        };
+        const schedule = banner.status === 'active' || banner.status === 'enabled'
+          ? formatRemaining(banner.remaining_seconds)
+          : banner.open_time ? `opens ${banner.open_time} · ${banner.duration_days} day(s)` : '';
+        const action = banner.can_override
+          ? `<button type="button" data-banner-id="${banner.id}" data-enable="${!banner.override_enabled}">${banner.override_enabled ? 'Disable override' : 'Enable'}</button>`
+          : '<button type="button" disabled>Scheduled</button>';
+        const saved = banner.naturally_active && banner.override_enabled ? ' · saved override' : '';
+        return `<div class="banner-row"><div><strong>${banner.id} · ${escapeHtml(banner.name)}</strong><small>${labels[banner.status] || banner.status}${saved}${schedule ? ` · ${escapeHtml(schedule)}` : ''}</small></div>${action}</div>`;
+      }).join('') : 'No gacha banners found.';
+      list.querySelectorAll('[data-banner-id]').forEach(button => {
+        button.onclick = () => setBanner(Number(button.dataset.bannerId), button.dataset.enable === 'true');
+      });
+    }
+
+    async function loadBanners() {
+      const response = await fetch('/api/gacha_banners?' + authParams(), { cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || `banner list failed: ${response.status}`);
+      banners.splice(0, banners.length, ...(result.data || []));
+      renderBanners();
+    }
+
+    async function openBanners() {
+      document.getElementById('bannerDialog').showModal();
+      document.getElementById('bannerList').textContent = 'Loading…';
+      try { await loadBanners(); }
+      catch (error) { document.getElementById('bannerList').textContent = error.message; }
+    }
+
+    async function setBanner(gachaId, enabled) {
+      try {
+        const response = await fetch('/api/gacha_banners', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ token: token.value, gacha_id: gachaId, enabled })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || `banner update failed: ${response.status}`);
+        output.textContent = `${result.message}. Reopen the gacha screen in the game to refresh its list.`;
+        await loadBanners();
+      } catch (error) {
+        output.textContent = error.message;
+      }
+    }
+
+    function renderBossRushSeasons() {
+      const list = document.getElementById('bossRushList');
+      const labels = { active: 'Active', enabled: 'Enabled by MUIP', upcoming: 'Upcoming', expired: 'Expired' };
+      list.innerHTML = bossRushSeasons.length ? bossRushSeasons.map(event => {
+        const schedule = event.status === 'active' || event.status === 'enabled'
+          ? formatRemaining(event.remaining_seconds)
+          : `${event.open_time} → ${event.close_time}`;
+        const action = event.can_override
+          ? `<button type="button" data-boss-rush-id="${event.id}" data-enable="${!event.override_enabled}">${event.override_enabled ? 'Disable override' : 'Enable'}</button>`
+          : '<button type="button" disabled>Scheduled</button>';
+        const saved = event.naturally_active && event.override_enabled ? ' · saved override' : '';
+        return `<div class="banner-row"><div><strong>${event.id} · ${escapeHtml(event.name)}</strong><small>${labels[event.status] || event.status}${saved}${schedule ? ` · ${escapeHtml(schedule)}` : ''}</small></div>${action}</div>`;
+      }).join('') : 'No Boss Rush seasons found.';
+      list.querySelectorAll('[data-boss-rush-id]').forEach(button => {
+        button.onclick = () => setBossRushSeason(Number(button.dataset.bossRushId), button.dataset.enable === 'true');
+      });
+    }
+
+    async function loadBossRushSeasons() {
+      const response = await fetch('/api/boss_rush_seasons?' + authParams(), { cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || `Boss Rush list failed: ${response.status}`);
+      bossRushSeasons.splice(0, bossRushSeasons.length, ...(result.data || []));
+      renderBossRushSeasons();
+    }
+
+    async function openBossRush() {
+      document.getElementById('bossRushDialog').showModal();
+      document.getElementById('bossRushList').textContent = 'Loading…';
+      try { await loadBossRushSeasons(); }
+      catch (error) { document.getElementById('bossRushList').textContent = error.message; }
+    }
+
+    async function setBossRushSeason(eventId, enabled) {
+      try {
+        const response = await fetch('/api/boss_rush_seasons', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ token: token.value, event_id: eventId, enabled })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || `Boss Rush update failed: ${response.status}`);
+        output.textContent = `${result.message}. Reopen the activity screen in the game to refresh its list.`;
+        await loadBossRushSeasons();
+      } catch (error) {
+        output.textContent = error.message;
+      }
+    }
+
+    async function openTeleport() {
+      if (!player.value) { output.textContent = 'No player is online'; return; }
+      const dialog = document.getElementById('teleportDialog');
+      const select = document.getElementById('teleportLocation');
+      document.getElementById('currentLocation').textContent = 'Current location: loading…';
+      select.innerHTML = '<option>Loading…</option>';
+      dialog.showModal();
+      try {
+        const response = await fetch('/api/teleport_locations?' + authParams({ player_uid: player.value }), { cache: 'no-store' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || `teleport list failed: ${response.status}`);
+        const current = result.data?.current;
+        document.getElementById('currentLocation').textContent = current
+          ? `Current location: ${current.name} · ${current.kind}${current.city_id ? ` · city ${current.city_id}` : ''} · region ${current.region}`
+          : 'Current location: unknown';
+        const gates = result.data?.gates || [];
+        const missions = result.data?.missions || [];
+        document.getElementById('missionLocations').textContent = missions.length
+          ? `Missions: ${missions.map(mission => `${mission.current ? 'CURRENT' : 'active'} task ${mission.task_id} · city ${mission.city_id} · ${mission.target_kind} ${mission.target}${mission.teleportable ? '' : ' (navigation only)'}`).join(' | ')}`
+          : 'Active missions: none with a table-defined location';
+        const currentMission = missions.find(mission => mission.current && mission.teleportable);
+        const missionOptions = missions.filter(mission => mission.teleportable).map(mission =>
+          `<option value="mission:${mission.task_id}"${mission.current ? ' selected' : ''}>${mission.current ? 'Current' : 'Active'} mission ${mission.task_id} · city ${mission.city_id} · exact scene point</option>`
+        ).join('');
+        select.innerHTML = gates.length || missionOptions
+          ? `${missionOptions ? `<optgroup label="Mission locations">${missionOptions}</optgroup>` : ''}<optgroup label="Teleport gates">${gates.map(gate => `<option value="gate:${escapeHtml(gate.anchor_id)}"${!currentMission && current?.location_id === gate.anchor_id ? ' selected' : ''}>Region ${gate.region} · city ${gate.city_id} · ${escapeHtml(gate.name)}${gate.unlocked ? '' : ' (locked)'}${gate.visible ? '' : ' (hidden)'}</option>`).join('')}</optgroup>`
+          : '<option value="">No teleport locations available</option>';
+        document.getElementById('confirmTeleport').disabled = !select.value;
+      } catch (error) {
+        document.getElementById('currentLocation').textContent = error.message;
+        document.getElementById('missionLocations').textContent = 'Active missions: unavailable';
+        select.innerHTML = '<option value="">Unable to load locations</option>';
+        document.getElementById('confirmTeleport').disabled = true;
+      }
+    }
+
+    async function teleport() {
+      const destination = document.getElementById('teleportLocation').value;
+      if (!destination || !player.value) return;
+      const [kind, value] = destination.split(':', 2);
+      try {
+        const response = await fetch('/api/teleport', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            token: token.value,
+            player_uid: Number(player.value),
+            ...(kind === 'mission' ? { task_id: Number(value) } : { anchor_id: value })
+          })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || `teleport failed: ${response.status}`);
+        output.textContent = result.message;
+        document.getElementById('teleportDialog').close();
+      } catch (error) {
+        output.textContent = error.message;
+      }
+    }
+
+    document.querySelectorAll('[data-command]').forEach(button => button.onclick = () => run(button.dataset.command));
+    document.querySelectorAll('[data-grant-kind]').forEach(button => button.onclick = () => openGrantDialog(button.dataset.grantKind));
+    document.querySelectorAll('[data-progress-kind]').forEach(button => button.onclick = () => openProgressDialog(button.dataset.progressKind));
+    document.getElementById('run').onclick = () => run(document.getElementById('command').value);
+    document.getElementById('confirmGrant').onclick = grantSelected;
+    document.getElementById('maxGrant').onclick = maxSelected;
+    document.getElementById('closeGrant').onclick = () => document.getElementById('grantDialog').close();
+    document.getElementById('cancelGrant').onclick = () => document.getElementById('grantDialog').close();
+    document.getElementById('grantEntry').onchange = renderGrantOptions;
+    document.getElementById('grantSearch').oninput = renderGrantOptions;
+    document.getElementById('customRelic').onchange = renderRelicBuild;
+    document.getElementById('confirmProgress').onclick = applyProgress;
+    document.getElementById('closeProgress').onclick = () => document.getElementById('progressDialog').close();
+    document.getElementById('cancelProgress').onclick = () => document.getElementById('progressDialog').close();
+    document.getElementById('manageBanners').onclick = openBanners;
+    document.getElementById('closeBanners').onclick = () => document.getElementById('bannerDialog').close();
+    document.getElementById('doneBanners').onclick = () => document.getElementById('bannerDialog').close();
+    document.getElementById('manageBossRush').onclick = openBossRush;
+    document.getElementById('closeBossRush').onclick = () => document.getElementById('bossRushDialog').close();
+    document.getElementById('doneBossRush').onclick = () => document.getElementById('bossRushDialog').close();
+    document.getElementById('openTeleport').onclick = openTeleport;
+    document.getElementById('confirmTeleport').onclick = teleport;
+    document.getElementById('closeTeleport').onclick = () => document.getElementById('teleportDialog').close();
+    document.getElementById('cancelTeleport').onclick = () => document.getElementById('teleportDialog').close();
+    document.getElementById('player').onchange = loadCollection;
+    token.onchange = refreshStatus;
+    refreshStatus();
+  </script>
+</body>
+</html>

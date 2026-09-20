@@ -1,0 +1,6 @@
+ALTER TABLE players ADD COLUMN banner_girl INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE player_role_progress ADD COLUMN appear_skill_key INTEGER NOT NULL DEFAULT 2;
+ALTER TABLE player_role_progress ADD COLUMN element INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE player_role_progress ADD COLUMN element4call INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE player_role_progress ADD COLUMN cur_mc INTEGER NOT NULL DEFAULT 0;

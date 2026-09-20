@@ -1,0 +1,11 @@
+/target/
+*.proto
+__pycache__/
+*.log
+logs/
+assets/
+proxy/
+/tools/
+*.bat
+/dist/
+/data/

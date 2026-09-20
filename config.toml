@@ -1,0 +1,42 @@
+[server]
+listen = "0.0.0.0:8888"
+assets_url = "https://hh-web-static.dimcroon.com"
+zone_offset = -25200
+
+[sdk]
+listen = "0.0.0.0:18889"
+
+[hotpatch]
+listen = "0.0.0.0:18888"
+upstream = "https://allfiring-en-game-cdn.genmugame.com/prod/en/Android"
+
+[packetcapture]
+listen = "0.0.0.0:8888"
+upstream = "43.166.151.130:8888"
+output = "data/proxy"
+
+[muip]
+enabled = true
+listen = "127.0.0.1:18890"
+token = "garcia"
+gm_listen = "127.0.0.1:18891"
+
+[account_defaults]
+nickname = ""
+level = 1
+gameplay_id = -1
+active_formation = 1
+formation_key = 2
+appear_skill_key = 2
+permanent_profile_end_time = -1
+
+[gameplay]
+dungeon_player_exp_per_stamina = 10
+question_url = "https://www.wjx.cn/vm/OteiTGi.aspx#"
+
+[paths]
+game_tables = "data/tables"
+assets = "assets"
+
+[database]
+path = "data/garcia.db"

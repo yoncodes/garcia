@@ -1,0 +1,11 @@
+[package]
+name = "packetcapture"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+common.workspace = true
+protocol.workspace = true
+tokio.workspace = true
+tracing.workspace = true

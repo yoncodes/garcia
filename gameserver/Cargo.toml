@@ -1,0 +1,19 @@
+[package]
+name = "gameserver"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+common.workspace = true
+database.workspace = true
+logic.workspace = true
+muipserver.workspace = true
+protocol.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+configs.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
