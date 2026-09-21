@@ -38,7 +38,7 @@ pub async fn on_info(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkR
     let (boss_base, ids, max_damage, ranking_mail) = {
         let state = ctx.state.clone();
         let tables = &state.tables;
-        let player = ctx.update_player()?;
+        let mut player = ctx.update_player()?;
         let ranking_mail = ranking_reward_ready_at(
             tables,
             player.boss_rush.id,
@@ -47,7 +47,8 @@ pub async fn on_info(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkR
         )
         .filter(|ready_at| now >= *ready_at)
         .and_then(|_| {
-            player.deliver_boss_rush_ranking_reward(player.boss_rush.id, 1, 1, tables, now)
+            let boss_rush_id = player.boss_rush.id;
+            player.deliver_boss_rush_ranking_reward(boss_rush_id, 1, 1, tables, now)
         });
         if bid != 0 {
             player.sync_boss_rush(bid);

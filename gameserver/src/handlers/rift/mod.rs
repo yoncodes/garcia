@@ -25,11 +25,11 @@ pub async fn on_info(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkR
     let state = ctx.state.clone();
     let rift = current_rift(&state.tables, now, zone_offset);
     let my_rank = {
-        let player = ctx.update_player()?;
+        let mut player = ctx.update_player()?;
         if let Some(rift) = rift {
             player.sync_rift(rift.id);
         }
-        player_rift_rank(player)
+        player_rift_rank(&player)
     };
     let mut info = rift_info(&ctx.state.tables, now, zone_offset);
     if let Some(info) = info.as_mut() {

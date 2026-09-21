@@ -69,10 +69,8 @@ pub async fn on_info(ctx: &mut HandlerContext, request: ClientPacket) -> Network
 
 pub async fn on_start(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRougeStart::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .start_rouge(
             request.rouge_id,
             request.roles,
@@ -110,10 +108,8 @@ pub async fn on_status_set(ctx: &mut HandlerContext, packet: ClientPacket) -> Ne
 
 pub async fn on_enter(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRougeEnter::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .enter_rouge(request.event_pos, tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(&packet, DcNetWorkingResRougeEnter { rouge: Some(rouge) })
@@ -138,10 +134,8 @@ pub async fn on_node_report(ctx: &mut HandlerContext, packet: ClientPacket) -> N
             },
         );
     }
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .report_rouge_node(request.roles, tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     let rouge_score = ctx.player()?.rouge_score;
@@ -171,10 +165,8 @@ pub async fn on_buff_select(ctx: &mut HandlerContext, packet: ClientPacket) -> N
 
 pub async fn on_buff_waive(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     DcNetWorkingParamRougeWaiveBuff::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .waive_rouge_buff(tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -185,10 +177,8 @@ pub async fn on_buff_waive(ctx: &mut HandlerContext, packet: ClientPacket) -> Ne
 
 pub async fn on_buff_regen(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     DcNetWorkingParamRougeRegenBuff::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .regen_rouge_buff(tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -199,10 +189,8 @@ pub async fn on_buff_regen(ctx: &mut HandlerContext, packet: ClientPacket) -> Ne
 
 pub async fn on_coinbox_open(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     DcNetWorkingParamRougeCoinboxOpen::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .open_rouge_coinbox(tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -213,10 +201,8 @@ pub async fn on_coinbox_open(ctx: &mut HandlerContext, packet: ClientPacket) -> 
 
 pub async fn on_rest(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     DcNetWorkingParamRougeRest::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .rest_during_rogue_run(tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(&packet, DcNetWorkingResRougeRest { rouge: Some(rouge) })
@@ -224,10 +210,8 @@ pub async fn on_rest(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkR
 
 pub async fn on_bless_open(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     DcNetWorkingParamRougeBlessOpen::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let (rouge, curse_index) = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let (rouge, curse_index) = player
         .open_rouge_blessing(tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -241,10 +225,8 @@ pub async fn on_bless_open(ctx: &mut HandlerContext, packet: ClientPacket) -> Ne
 
 pub async fn on_finish(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     DcNetWorkingParamRougeFinish::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let outcome = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let outcome = player
         .finish_rouge(tables, common::time::ServerTime::now_seconds_i32())
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -260,10 +242,8 @@ pub async fn on_finish(ctx: &mut HandlerContext, packet: ClientPacket) -> Networ
 
 pub async fn on_trade_buy(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRougeTradeBuy::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .buy_rouge_trade(request.goods_type, &request.goods, tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(&packet, DcNetWorkingResRougeTradeBuy { rouge: Some(rouge) })
@@ -271,10 +251,8 @@ pub async fn on_trade_buy(ctx: &mut HandlerContext, packet: ClientPacket) -> Net
 
 pub async fn on_item_use(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRougeItemUse::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .use_rouge_item(request.item_id, tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(&packet, DcNetWorkingResRougeItemUse { rouge: Some(rouge) })
@@ -285,10 +263,8 @@ pub async fn on_sub_event_item(
     packet: ClientPacket,
 ) -> NetworkResult<()> {
     DcNetWorkingParamRougeSubevtItem::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .claim_rogue_subevent_item(tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -302,10 +278,8 @@ pub async fn on_npc_select_effect(
     packet: ClientPacket,
 ) -> NetworkResult<()> {
     let request = DcNetWorkingParamRougeNpcSelectEffect::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .select_rouge_npc_effect(request.npc_eff_id, tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -319,10 +293,8 @@ pub async fn on_score_reward_claim(
     packet: ClientPacket,
 ) -> NetworkResult<()> {
     DcNetWorkingParamRougeScoreRewardClaim::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let (reward, score_point_at) = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let (reward, score_point_at) = player
         .claim_rouge_score_rewards(tables, common::time::ServerTime::now_seconds_i32())
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -356,10 +328,8 @@ pub async fn on_tech_tree(ctx: &mut HandlerContext, request: ClientPacket) -> Ne
 
 pub async fn on_tech_take(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRougeTechTake::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let remain = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let remain = player
         .unlock_rouge_technology(request.id, tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
@@ -376,10 +346,9 @@ pub async fn on_rouge_boss_box_open(
     request: ClientPacket,
 ) -> NetworkResult<()> {
     DcNetWorkingParamRougeBossBoxOpen::decode(request.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let (reward, remain) = ctx
-        .update_player()?
-        .open_rouge_boss_box(&state.tables, common::time::ServerTime::now_seconds_i32())
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let (reward, remain) = player
+        .open_rouge_boss_box(tables, common::time::ServerTime::now_seconds_i32())
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(
         &request,
@@ -395,10 +364,8 @@ pub async fn on_subevt_store_buy(
     request: ClientPacket,
 ) -> NetworkResult<()> {
     let param = DcNetWorkingParamRougeSubevtStoreBuy::decode(request.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let rouge = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let rouge = player
         .buy_rouge_subevent_store(param.goods_type, &param.goods, tables)
         .map_err(|error| NetworkError::InvalidRouge(error.to_string()))?;
     ctx.send_reply(

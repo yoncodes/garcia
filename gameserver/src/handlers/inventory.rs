@@ -38,16 +38,14 @@ pub async fn on_list(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkR
 
 pub async fn on_convert(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamItemsConvert::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
     let now = common::time::ServerTime::now_seconds_i32();
+    let (player, tables) = ctx.update_player()?.with_tables();
     let CraftOutcome {
         id,
         amount,
         remains,
         target,
-    } = ctx
-        .update_player()?
+    } = player
         .convert_item(request.id, request.amount, &request.costs, tables, now)
         .map_err(invalid_craft)?;
     ctx.send_reply(
@@ -63,16 +61,14 @@ pub async fn on_convert(ctx: &mut HandlerContext, packet: ClientPacket) -> Netwo
 
 pub async fn on_synthesis(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamItemsSynthesis::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
     let now = common::time::ServerTime::now_seconds_i32();
+    let (player, tables) = ctx.update_player()?.with_tables();
     let CraftOutcome {
         id,
         amount,
         remains,
         target,
-    } = ctx
-        .update_player()?
+    } = player
         .synthesize_item(request.id, request.amount, tables, now)
         .map_err(invalid_craft)?;
     ctx.send_reply(
@@ -91,10 +87,8 @@ pub async fn on_use(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkRe
     let item = request
         .items
         .ok_or_else(|| NetworkError::InvalidInventory("missing item".into()))?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let ItemUseOutcome { rewards, remain } = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let ItemUseOutcome { rewards, remain } = player
         .use_item(item, tables, common::time::ServerTime::now_seconds_i32())
         .map_err(invalid_item)?;
     ctx.send_reply(
@@ -113,10 +107,8 @@ pub async fn on_select_reward(ctx: &mut HandlerContext, packet: ClientPacket) ->
         .iter()
         .map(|selection| (selection.rid, selection.amount))
         .collect::<Vec<_>>();
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let ItemUseOutcome { rewards, remain } = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let ItemUseOutcome { rewards, remain } = player
         .select_package_reward(
             request.item_id,
             &selections,

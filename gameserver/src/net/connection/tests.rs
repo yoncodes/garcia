@@ -128,7 +128,7 @@ async fn encrypted_login_and_gm_reward_pushes_succeed() {
         .heat_regeneration_interval;
     let heat_item_id = state.tables.cultivation_constants.heat_item_id;
     {
-        let player = gateway.context.update_player().unwrap();
+        let mut player = gateway.context.update_player().unwrap();
         let heat = player
             .items
             .iter_mut()

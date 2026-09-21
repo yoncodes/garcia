@@ -29,9 +29,8 @@ pub async fn on_user_roles(ctx: &mut HandlerContext, request: ClientPacket) -> N
 
 pub async fn on_change_skin(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRolesChangeSkin::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    ctx.update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    player
         .set_role_skin(request.game_role_id, request.skin_id, tables)
         .map_err(invalid_role)?;
     ctx.send_reply(
@@ -45,11 +44,9 @@ pub async fn on_change_skin(ctx: &mut HandlerContext, packet: ClientPacket) -> N
 
 pub async fn on_level_up(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRolesLevelUp::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
     let now = common::time::ServerTime::now_seconds_i32();
-    let outcome = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let outcome = player
         .level_up_role(
             request.game_role_id,
             &request.itmes,
@@ -80,12 +77,8 @@ pub async fn on_rank_up(ctx: &mut HandlerContext, packet: ClientPacket) -> Netwo
         .data
         .ok_or_else(|| NetworkError::InvalidRoleMutation("missing role id".into()))?
         .game_role_id;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let outcome = ctx
-        .update_player()?
-        .rank_up_role(role_id, tables)
-        .map_err(invalid_role)?;
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let outcome = player.rank_up_role(role_id, tables).map_err(invalid_role)?;
     ctx.send_reply(
         &packet,
         DcNetWorkingResRolesRankUp {
@@ -100,10 +93,8 @@ pub async fn on_rank_up(ctx: &mut HandlerContext, packet: ClientPacket) -> Netwo
 
 pub async fn on_resonance(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRolesBrekUp::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let (maid_quality, remain, namecard) = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let (maid_quality, remain, namecard) = player
         .resonate_role(request.game_role_id, tables)
         .map_err(invalid_role)?;
     if let Some(card) = namecard {
@@ -128,10 +119,8 @@ pub async fn on_resonance(ctx: &mut HandlerContext, packet: ClientPacket) -> Net
 
 pub async fn on_rank_reward(ctx: &mut HandlerContext, packet: ClientPacket) -> NetworkResult<()> {
     let request = DcNetWorkingParamRoleRankUpAward::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let reward = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let reward = player
         .claim_role_rank_reward(
             request.rid,
             request.level,
@@ -152,10 +141,8 @@ pub async fn on_talent_level_up(
     packet: ClientPacket,
 ) -> NetworkResult<()> {
     let request = DcNetWorkingParamTalentLevelUp::decode(packet.payload.as_slice())?;
-    let state = ctx.state.clone();
-    let tables = &state.tables;
-    let (talent, remain) = ctx
-        .update_player()?
+    let (player, tables) = ctx.update_player()?.with_tables();
+    let (talent, remain) = player
         .level_up_role_talent(request.game_role_id, request.pos, tables)
         .map_err(invalid_role)?;
     ctx.send_reply(

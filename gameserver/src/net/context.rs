@@ -1,6 +1,10 @@
-use std::sync::Arc;
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use common::time::ServerTime;
+use configs::GameTables;
 use database::models::game::player_state::PlayerRecord;
 use protocol::prost::Message;
 
@@ -24,6 +28,31 @@ pub(crate) struct HandlerContext {
     dirty: bool,
     reply: Option<CommandReply>,
     pushes: Vec<CommandReply>,
+}
+
+pub(crate) struct PlayerUpdate<'a> {
+    player: &'a mut Player,
+    tables: &'a GameTables,
+}
+
+impl<'a> PlayerUpdate<'a> {
+    pub fn with_tables(self) -> (&'a mut Player, &'a GameTables) {
+        (self.player, self.tables)
+    }
+}
+
+impl Deref for PlayerUpdate<'_> {
+    type Target = Player;
+
+    fn deref(&self) -> &Self::Target {
+        self.player
+    }
+}
+
+impl DerefMut for PlayerUpdate<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.player
+    }
 }
 
 impl HandlerContext {
@@ -84,9 +113,13 @@ impl HandlerContext {
         self.player.as_ref().ok_or(NetworkError::Unauthenticated)
     }
 
-    pub fn update_player(&mut self) -> NetworkResult<&mut Player> {
+    pub fn update_player(&mut self) -> NetworkResult<PlayerUpdate<'_>> {
         self.dirty = true;
-        self.player.as_mut().ok_or(NetworkError::Unauthenticated)
+        let player = self.player.as_mut().ok_or(NetworkError::Unauthenticated)?;
+        Ok(PlayerUpdate {
+            player,
+            tables: &self.state.tables,
+        })
     }
 
     pub fn send_reply(
