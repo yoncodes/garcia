@@ -40,7 +40,7 @@ impl Player {
         }
 
         let mut rewards = match config.item_type {
-            2 | 101 => vec![(effect.key, checked_amount(effect.value, request.amount)?)],
+            1 | 2 | 101 => vec![(effect.key, checked_amount(effect.value, request.amount)?)],
             102 => package_rewards(
                 effect.key,
                 checked_amount(effect.value, request.amount)?,

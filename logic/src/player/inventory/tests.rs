@@ -90,6 +90,36 @@ fn item_use_and_selectable_packages_apply_extracted_rewards() {
 }
 
 #[test]
+fn sacred_white_stones_convert_to_table_defined_emberite() {
+    let (tables, config) = fixture();
+    let mut player = Player::new(42, &tables, &config.account_defaults);
+    let stone = player.add_item(100_100_001, 3, &tables).unwrap();
+    let emberite_before = player
+        .items
+        .iter()
+        .find(|item| item.item_id == 100_100_002)
+        .map_or(0, |item| item.amount);
+
+    let used = player
+        .use_item(
+            DcNetDataUseItem {
+                user_item_id: stone.user_item_id,
+                item_id: stone.item_id,
+                amount: 2,
+                ..Default::default()
+            },
+            &tables,
+            0,
+        )
+        .unwrap();
+
+    assert_eq!(used.remain.amount, 1);
+    assert_eq!(used.rewards.items.len(), 1);
+    assert_eq!(used.rewards.items[0].item_id, 100_100_002);
+    assert_eq!(used.rewards.items[0].amount, emberite_before + 20);
+}
+
+#[test]
 fn random_relic_boxes_grant_one_table_relic_per_box() {
     let (tables, config) = fixture();
     let mut player = Player::new(42, &tables, &config.account_defaults);
