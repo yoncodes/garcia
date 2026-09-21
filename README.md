@@ -12,7 +12,7 @@ Garcia is a Rust server emulator for the Android version of *ALLfiring*.
 
 ## Binary release
 
-Download the [latest server](https://github.com/yoncodes/garcia/releases) and [game data](https://archive.org/details/garcia-1.1.22-game-data). Extract both
+Download the [latest server](https://github.com/yoncodes/garcia/releases) and [game data](https://transfer.it/t/EWoVfbwDlRoI). Extract both
 into one folder and keep their folder structure intact. The result should look
 like this:
 
