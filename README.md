@@ -31,8 +31,7 @@ Garcia/
 
 1. Edit `config.toml` if the computer's LAN address or ports differ from your
    setup.
-2. Use [Garcia Patcher](https://github.com/yoncodes/garcia-patcher) with your
-   own original APK or XAPK to point the client at this computer.
+2. Use [Garcia Patcher](https://github.com/yoncodes/garcia-patcher) to patch the client.
 3. Run `start-servers.bat`, then launch the patched game.
 
 That is the entire player setup. The game-data archive includes the decoded
